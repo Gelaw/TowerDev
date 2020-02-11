@@ -37,19 +37,19 @@ function test()
   table.insert(entities, spawn)
 
   gun = {
-    width = 60, height = 10, angle = math.pi,
+    width = 100, height = 10, angle = math.pi,
     cooldown = 2, cooldownTimer = 0,
     --draw
-    color = {0, 0, 0}, offset={x=-10, y=-5},
+    color = {0, 0, 0}, offset={x=40, y=0},
     draw = function (self, x, y)
       love.graphics.setColor(self.color)
       love.graphics.translate(x, y)
       love.graphics.rotate(self.angle)
       local vertices = {
-        self.offset.x, self.offset.y,
-        self.offset.x + self.width, self.offset.y - 5,
-        self.offset.x + self.width, self.offset.y +  self.height + 5,
-        self.offset.x, self.offset.y +  self.height
+        self.offset.x - .5*self.width, self.offset.y -  .5*self.height,
+        self.offset.x + .5*self.width, self.offset.y -  .5*self.height - 5,
+        self.offset.x + .5*self.width, self.offset.y +  .5*self.height + 5,
+        self.offset.x - .5*self.width, self.offset.y +  .5*self.height
       }
       love.graphics.polygon("fill",  vertices)
       love.graphics.setColor(1, 1, 1)
@@ -66,24 +66,21 @@ function test()
       --cooldown check
       if self.cooldownTimer <= 0 then
         self.cooldownTimer = self.cooldown
-        local nShell = math.random(5, 9)
-        for i = 1, nShell do
-          --spawn shotshell
-          local dAngle = math.rad(math.random(-10, 10))
-          local shotshell = newProjectile()
-          shotshell.x = x + (self.width-self.offset.x)*math.cos(self.angle+dAngle)
-          shotshell.y = y + (self.height-self.offset.y)*math.sin(self.angle+dAngle)
-          shotshell.radius = 1
-          shotshell.angle = self.angle+dAngle
-          shotshell.speed = 1500,
-          table.insert(entities, shotshell)
-        end
+        --spawn bullet
+        local shotshell = newProjectile()
+        shotshell.x = x + (self.width-self.offset.x)*math.cos(self.angle)
+        shotshell.y = y +  (self.width-self.offset.x)*math.sin(self.angle)
+        shotshell.radius = 1
+        shotshell.angle = self.angle
+        shotshell.speed = 3000
+        table.insert(entities, shotshell)
+
       end
     end
   }
 
   tower = {
-    x = 0, y = 0, width = 10, height = 10, color = {0, 0, 0},
+    x = 0, y = 0, width = 30, height = 30, color = {0, 1, 0},
     rotationSpeed = 5, target = nil,
 
     gun = gun,
@@ -110,7 +107,7 @@ function test()
       end
       --draw tower
       love.graphics.setColor(self.color)
-      love.graphics.rectangle("fill", self.x, self.y, self.width, self.height)
+      love.graphics.rectangle("fill", self.x-.5*self.width, self.y-.5* self.height, self.width, self.height)
       --draw gun
       self.gun:draw(self.x, self.y)
     end,
@@ -192,6 +189,10 @@ function newProjectile()
     end,
     --update
     update = function (self, dt)
+      if self.trail then
+        table.insert(self.trail, self.x)
+        table.insert(self.trail, self.y)
+      end
       self.timer = self.timer + dt
       if self.timer >= self.lifeTime then
         self.killmenow = true
@@ -199,10 +200,7 @@ function newProjectile()
       end
       self.x = self.x + self.speed*math.cos(self.angle)*dt
       self.y = self.y + self.speed*math.sin(self.angle)*dt
-      if self.trail then
-        table.insert(self.trail, self.x)
-        table.insert(self.trail, self.y)
-      end
+
     end,
     collide = function (self, collider)
       if collider.tag == "ennemy" then
