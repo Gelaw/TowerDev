@@ -12,9 +12,127 @@
 
 require "base"
 
+function test()
+  spawn =  {
+    x = -500, y = -500, width = 10, height = 10,
+    destination = {x = 700, y = 300}, spawnCD = 5, spawnTimer = 0,
+    --draw
+    shape = "rectangle",color = {1, 0, 0, 1},
+    --update
+    update = function (self, dt)
+      --if spawnTimer reached 0
+      if self.spawnTimer <= 0 then
+        -- then spawn new ennemy and change variable and start spawnTimer
+        local ennemy = newEnnemy()
+        ennemy.x, ennemy.y = self.x + math.random(100) - 50, self.y + math.random(100) - 50
+        ennemy.destination = self.destination
+        table.insert(entities, ennemy)
+        self.spawnTimer = self.spawnCD
+      else
+        --countdown spawnTimer
+        self.spawnTimer = self.spawnTimer - dt
+      end
+    end
+  }
+  table.insert(entities, spawn)
+
+  gun = {
+    width = 60, height = 10, angle = math.pi,
+    cooldown = 2, cooldownTimer = 0,
+    --draw
+    color = {0, 0, 0}, offset={x=-10, y=-5},
+    draw = function (self, x, y)
+      love.graphics.setColor(self.color)
+      love.graphics.translate(x, y)
+      love.graphics.rotate(self.angle)
+      local vertices = {
+        self.offset.x, self.offset.y,
+        self.offset.x + self.width, self.offset.y - 5,
+        self.offset.x + self.width, self.offset.y +  self.height + 5,
+        self.offset.x, self.offset.y +  self.height
+      }
+      love.graphics.polygon("fill",  vertices)
+      love.graphics.setColor(1, 1, 1)
+      love.graphics.circle("fill", 0, 0, 3)
+    end,
+    --update
+    update = function (self, dt, x, y)
+      self.cooldownTimer = self.cooldownTimer - dt
+      if love.keyboard.isDown("space") then
+        self:shoot(x, y)
+      end
+    end,
+    shoot = function (self, x, y)
+      --cooldown check
+      if self.cooldownTimer <= 0 then
+        self.cooldownTimer = self.cooldown
+        local nShell = math.random(5, 9)
+        for i = 1, nShell do
+          --spawn shotshell
+          local dAngle = math.rad(math.random(-10, 10))
+          local shotshell = newProjectile()
+          shotshell.x = x + (self.width-self.offset.x)*math.cos(self.angle+dAngle)
+          shotshell.y = y + (self.height-self.offset.y)*math.sin(self.angle+dAngle)
+          shotshell.radius = 1
+          shotshell.angle = self.angle+dAngle
+          shotshell.speed = 1500,
+          table.insert(entities, shotshell)
+        end
+      end
+    end
+  }
+
+  tower = {
+    x = 0, y = 0, width = 10, height = 10, color = {0, 0, 0},
+    rotationSpeed = 5, target = nil,
+
+    gun = gun,
+    sensor = newSensor(),
+    behavior = nil, --???
+
+    draw = function (self)
+      --draw sensor range
+      self.sensor:draw(self.x, self.y)
+      -- target overlay
+      if self.target then
+        --Dont look at this, complicated stff for graphical enhancement
+        love.graphics.setColor(1, 0, 0)
+        local o = 10
+        love.graphics.line(self.target.x - o, self.target.y - o, self.target.x - o + o*.6, self.target.y - o)
+        love.graphics.line(self.target.x - o, self.target.y - o, self.target.x - o , self.target.y - o + o*.6)
+        love.graphics.line(self.target.x + o, self.target.y + o, self.target.x + o - o*.6, self.target.y + o)
+        love.graphics.line(self.target.x + o, self.target.y + o, self.target.x + o , self.target.y + o - o*.6)
+
+        love.graphics.line(self.target.x + o, self.target.y - o, self.target.x + o - o*.6, self.target.y - o)
+        love.graphics.line(self.target.x - o, self.target.y + o, self.target.x - o , self.target.y + o - o*.6)
+        love.graphics.line(self.target.x - o, self.target.y + o, self.target.x - o + o*.6, self.target.y + o)
+        love.graphics.line(self.target.x + o, self.target.y - o, self.target.x + o , self.target.y - o + o*.6)
+      end
+      --draw tower
+      love.graphics.setColor(self.color)
+      love.graphics.rectangle("fill", self.x, self.y, self.width, self.height)
+      --draw gun
+      self.gun:draw(self.x, self.y)
+    end,
+    update = function (self, dt)
+      --update components
+      self.sensor:update(dt, self.x, self.y)
+      self.gun:update(dt, self.x, self.y)
+      --pick action
+      self.target = self.sensor.targets[1]
+      if self.target then
+        self.gun.angle = math.angle(self.x, self.y, self.target.x, self.target.y)
+        self.gun:shoot(self.x, self.y)
+      end
+    end
+  }
+  table.insert(entities, tower)
+end
+
+
 function newEnnemy()
-  ennemy = {
-     x = 0, y = 0, radius = 20, tag = "ennemy",
+  return {
+    x = 0, y = 0, radius = 3, tag = "ennemy",
     --draw
     shape = "circle", color = {0, 0, 1},
     --update
@@ -40,113 +158,84 @@ function newEnnemy()
     collide = function (self, collider)
       if collider.tag == "bullet" then
         self.killmenow = true
-      table.insert(particuleEffects, {
-        color = self.color,
-        x=self.x, y=self.y, timeLeft=0.2,nudge = 15,size=2,
-        draw = function (self)
-          love.graphics.setColor(self.color)
-          local n = 6
-          for i = 1, n do
-            love.graphics.circle("fill",
-            self.x + (0.2-self.timeLeft)*120*math.cos(i*2*math.pi/n),
-            self.y + (0.2-self.timeLeft)*120*math.sin(i*2*math.pi/n),
-            self.size)
-          end
-        end
-      })
-      end
-    end
-  }
-  return ennemy
-end
-
-function test()
-  spawn =  {
-    x = 0, y = 0, width = 100, height = 100,
-    destination = {x = 100, y = 300}, spawnCD = 5, spawnTimer = 0,
-    --draw
-    shape = "rectangle",color = {1, 0, 0, 0.5},
-    --update
-    update = function (self, dt)
-      --if spawnTimer reached 0
-      if self.spawnTimer <= 0 then
-        -- then spawn new ennemy and change variable and start spawnTimer
-        local ennemy = newEnnemy()
-        ennemy.x, ennemy.y = self.x + math.random(100) - 50, self.y + math.random(100) - 50
-        ennemy.destination = self.destination
-        table.insert(entities, ennemy)
-        self.spawnTimer = self.spawnCD
-      else
-        --countdown spawnTimer
-        self.spawnTimer = self.spawnTimer - dt
-      end
-    end
-  }
-  table.insert(entities, spawn)
-
-  gun = {
-    x = 300, y = 300, width = 100, height = 10, angle = math.pi,
-    cooldown = 2, cooldownTimer = 0,
-    --draw
-    color = {0, 0, 0}, offset={x=-10, y=-5},
-    draw = function (self)
-      love.graphics.setColor(self.color)
-      love.graphics.translate(self.x, self.y)
-      love.graphics.rotate(self.angle)
-      local vertices = {
-        self.offset.x, self.offset.y,
-        self.offset.x + self.width, self.offset.y - 5,
-        self.offset.x + self.width, self.offset.y +  self.height + 5,
-        self.offset.x, self.offset.y +  self.height
-      }
-      love.graphics.polygon("fill",  vertices)
-      love.graphics.setColor(1, 1, 1)
-      love.graphics.circle("fill", 0, 0, 3)
-    end,
-    --update
-    update = function (self, dt)
-      self.cooldownTimer = self.cooldownTimer - dt
-      if love.keyboard.isDown("space") then
-        self:shoot()
-      end
-    end,
-    shoot = function (self)
-      --cooldown check
-      if self.cooldownTimer <= 0 then
-        self.cooldownTimer = self.cooldown
-        local nShell = math.random(5, 9)
-        for i = 1, nShell do
-          --spawn shotshell
-          local dAngle = math.rad(math.random(-5, 5))
-          local shotshell = {
-            x = self.x + (self.width-self.offset.x)*math.cos(self.angle+dAngle),
-            y = self.y + (self.height-self.offset.y)*math.sin(self.angle+dAngle),
-            radius = 5, angle = self.angle+dAngle, speed = 500,
-            tag = "bullet",
-            --draw
-            shape = "circle", color = {0.1, 0.1, 0.1},
-            --update
-            update = function (self, dt)
-                self.x = self.x + self.speed*math.cos(self.angle)*dt
-                self.y = self.y + self.speed*math.sin(self.angle)*dt
-            end,
-            collide = function (self, collider)
-              if collider.tag == "ennemy" then
-                self.killmenow = true
-              end
+        table.insert(particuleEffects, {
+          color = self.color,
+          x=self.x, y=self.y, timeLeft=0.2,nudge = 15,size=2,
+          draw = function (self)
+            love.graphics.setColor(self.color)
+            local n = 6
+            for i = 1, n do
+              love.graphics.circle("fill",
+              self.x + (0.2-self.timeLeft)*120*math.cos(i*2*math.pi/n),
+              self.y + (0.2-self.timeLeft)*120*math.sin(i*2*math.pi/n),
+              self.size)
             end
-          }
-          table.insert(entities, shotshell)
+          end
+        })
+      end
+    end
+  }
+end
+
+function newProjectile()
+  return {
+    x = 0, y = 0, radius = 1, angle = 0, speed = 0, tag = "bullet", trail = {}, trailColor = {1, 1, 1}, timer = 0, lifeTime = 3,
+    --draw
+    shape = "circle", color = {0.1, 0.1, 0.1},
+    draw = function (self)
+      if self.trail and #self.trail > 4 then
+        love.graphics.setColor(self.trailColor)
+        love.graphics.line(self.trail)
+      end
+      love.graphics.setColor(self.color)
+      love.graphics.circle("fill", self.x, self.y, self.radius)
+    end,
+    --update
+    update = function (self, dt)
+      self.timer = self.timer + dt
+      if self.timer >= self.lifeTime then
+        self.killmenow = true
+        return
+      end
+      self.x = self.x + self.speed*math.cos(self.angle)*dt
+      self.y = self.y + self.speed*math.sin(self.angle)*dt
+      if self.trail then
+        table.insert(self.trail, self.x)
+        table.insert(self.trail, self.y)
+      end
+    end,
+    collide = function (self, collider)
+      if collider.tag == "ennemy" then
+        self.killmenow = true
+      end
+    end
+  }
+end
+
+function newSensor()
+  return {
+    range = 700, color = {1, 1, 1, 0.1},
+    targets = {},
+    draw = function (self, x, y)
+      love.graphics.setColor(self.color[1], self.color[2], self.color[3], 1)
+      love.graphics.circle("line", x, y, self.range)
+      love.graphics.setColor(self.color[1], self.color[2], self.color[3], 0.1)
+      love.graphics.circle("fill", x, y, self.range)
+      for t, target in pairs(self.targets) do
+        love.graphics.line(x, y, target.x, target.y)
+      end
+    end,
+
+    update = function (self, dt, x, y)
+      self.targets = {}
+      for e, entity in pairs(entities) do
+        if entity.tag and entity.tag == "ennemy" and math.dist(x, y, entity.x, entity.y) < self.range then
+          table.insert(self.targets, {x=entity.x, y=entity.y})
         end
       end
     end
   }
-  table.insert(entities, gun)
 end
-
-
-
-
 
 -- Cam handling
 clickTarget = nil

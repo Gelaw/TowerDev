@@ -42,7 +42,7 @@ function love.draw()
   love.graphics.translate(camera.x, camera.y)
   if camera.scale*camera.scale > .1 then
     love.graphics.push()
-    love.graphics.setColor({0.1, 0.1, 0.1,  camera.scale*camera.scale })
+    love.graphics.setColor({0.1, 0.1, 0.1})
     for y = -camera.y -.5*height/camera.scale, -camera.y + .5*height/camera.scale, 100 do
       love.graphics.line(- .5*width/camera.scale - camera.x, y+camera.y%100, .5*width/camera.scale - camera.x, y+camera.y%100)
     end
@@ -63,15 +63,8 @@ function love.draw()
   end
   --UI
   love.graphics.reset()
-  -- -- CON'PASSE
-  -- local x, y = width*.8, height*.8
-  -- love.graphics.setColor({.2, .2, .2})
-  -- love.graphics.circle("fill", x, y, 35)
-  -- love.graphics.setColor({1, 0, 0})
-  -- love.graphics.polygon("fill", x+30*math.cos(camera.angle+math.rad(-90)), y+30*math.sin(camera.angle+math.rad(-90)),
-  --                               x+10*math.cos(camera.angle+math.rad(30)), y+10*math.sin(camera.angle+math.rad(30)),
-  --                               x+10*math.cos(camera.angle+math.rad(150)), y+10*math.sin(camera.angle+math.rad(150)))
-  love.graphics.print((love.mouse.getX()-camera.x-width/2)..", "..(love.mouse.getY()-camera.y-height/2), 10, 10)
+
+  love.graphics.print((love.mouse.getX()-camera.x-.5*width*camera.scale)..", "..(love.mouse.getY()-camera.y-.5*height*camera.scale), 10, 10)
 end
 
 
