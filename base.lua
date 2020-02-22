@@ -1,4 +1,9 @@
 
+
+function love.keypressed(key, scancode, isrepeat)
+  if key == "escape" then love.event.quit() end
+end
+
 draws = {}
 
 function addDrawFunction(draw)
@@ -37,21 +42,16 @@ function love.draw()
   love.graphics.setColor({.4, .4, .4})
   love.graphics.rectangle("fill", 1, 1, width-1, height-1)
   love.graphics.translate(width/2, height/2)
-  love.graphics.rotate(camera.angle)
-  love.graphics.scale(camera.scale, camera.scale)
-  love.graphics.translate(camera.x, camera.y)
+  camera:apply()
   if camera.scale*camera.scale > .1 then
-    love.graphics.push()
-    love.graphics.setColor({0.1, 0.1, 0.1})
-    for y = -camera.y -.5*height/camera.scale, -camera.y + .5*height/camera.scale, 100 do
-      love.graphics.line(- .5*width/camera.scale - camera.x, y+camera.y%100, .5*width/camera.scale - camera.x, y+camera.y%100)
+    love.graphics.setColor({0.1, 0.1, 0.1,  camera.scale*camera.scale })
+    for y = (camera.y -.5*height/camera.scale)+ (.5*height/camera.scale)%100 -100, camera.y + .5*height/camera.scale, 100 do
+      love.graphics.line(- .5*width/camera.scale + camera.x, y-camera.y%100, .5*width/camera.scale + camera.x, y-camera.y%100)
     end
-    for x = -camera.x - .5*width/camera.scale, -camera.x+.5*width/camera.scale, 100 do
-      love.graphics.line(x+camera.x%100, - .5*height/camera.scale -camera.y,x+camera.x%100,  .5*height/camera.scale-camera.y)
+    for x = camera.x - .5*width/camera.scale + (.5*width/camera.scale)%100 -100, camera.x+.5*width/camera.scale, 100 do
+      love.graphics.line(x-camera.x%100, - .5*height/camera.scale +camera.y,x-camera.x%100,  .5*height/camera.scale+camera.y)
     end
-    love.graphics.pop()
   end
-
   for d, draw in pairs(draws) do
     if type(draw) ~= "function" then
       print(draw, " is not a function!")
@@ -63,17 +63,15 @@ function love.draw()
   end
   --UI
   love.graphics.reset()
+------------------------------------------------------
 
-  love.graphics.print((love.mouse.getX()-camera.x-.5*width*camera.scale)..", "..(love.mouse.getY()-camera.y-.5*height*camera.scale), 10, 10)
 end
-
 
 updates = {}
 
 function addUpdateFunction(update)
   table.insert(updates, update)
 end
-
 
 function love.update(dt)
   for u, update in pairs(updates) do
@@ -83,6 +81,7 @@ function love.update(dt)
     end
     update(dt)
   end
+  camera:update(dt)
 end
 
 
@@ -96,25 +95,84 @@ function getBindOf(action)
   return bindings[action]
 end
 
+camera = {x = 0, y = 0, scale = 1, angle = 0, mode = nil,
+  shaker = { steps = {}, n = 1, stepTimer = 0, shakeTimer = 0},
+  apply = function (self)
+    local shaker = self.shaker
+    if shaker.steps[shaker.n] then
+      local c = shaker.stepTimer - shaker.steps[shaker.n].time
+      love.graphics.translate(c*shaker.steps[shaker.n].dx, c*shaker.steps[shaker.n].dy)
+    end
+    love.graphics.rotate(camera.angle)
+    love.graphics.scale(camera.scale, camera.scale)
+    love.graphics.translate( - camera.x, - camera.y)
+  end,
+  boxSize = 100,
+  update = function (self, dt)
+    local shaker = self.shaker
+    shaker.shakeTimer = shaker.shakeTimer - dt
+    if shaker.shakeTimer <= 0 then
+      shaker.steps = {}
+      shaker.n = 1
+      shaker.stepTimer = 0
+    elseif shaker.steps[shaker.n] then
+      shaker.stepTimer = shaker.stepTimer + dt
+      if shaker.stepTimer >= shaker.steps[shaker.n].time then
+        shaker.stepTimer = shaker.stepTimer - shaker.steps[shaker.n].time
+        shaker.n = shaker.n%#shaker.steps + 1
+      end
+    end
+    if self.mode == nil then return end
+    if self.mode[1] == "follow" then
+      if self.mode[2].x and self.mode[2].y then
+        self.x, self.y = self.mode[2].x, self.mode[2].y
+      end
+    end
+    if self.mode[1] == "moveTo" then
+      if self.mode[2].x and self.mode[2].y then
+        self.x, self.y = self.mode[2].x, self.mode[2].y
+        self.mode[1] = {}
+      end
+    end
+  end
+}
+
+
+
+function cameraShake(intensity, duration, pattern)
+  if not pattern then
+    camera.shaker.shakeTimer = duration
+    for i = 1, 10 do
+      camera.shaker.steps[i] = { dx = math.random(-1,1)*intensity/2, dy = math.random(-1, 1)*intensity/2, time = 0.1}
+    end
+  else
+    --Decrit des patterns gauche a droite, croise l ecran etc a modif en fonction
+    if pattern == "cross" then
+
+    end
+  end
+end
+
+
 
 function init()
   love.window.setFullscreen(true)
   width  = love.graphics.getWidth()
   height = love.graphics.getHeight()
-  camera = {x = 0, y = 0, scale = 1, angle = 0}
+
   entities = {}
   addDrawFunction(
     function ()
       for e, entity in pairs(entities) do
-        if math.abs(entity.x  + camera.x) <= .75*(width)/camera.scale
-        and math.abs(entity.y + camera.y) <= .75*(height)/camera.scale then
+        if math.abs(entity.x  - camera.x) <= .75*(width)/camera.scale
+        and math.abs(entity.y - camera.y) <= .75*(height)/camera.scale then
+          love.graphics.push()
           if entity.draw then
-            love.graphics.push()
             entity:draw()
-            love.graphics.pop()
           else
             basicEntityDraw(entity)
           end
+          love.graphics.pop()
         end
       end
     end
@@ -141,7 +199,7 @@ function init()
               if entity2.radius then
                 m2 = entity2.radius
               elseif entity2.width and entity2.height then
-                m2 = math.pow(entity2.width*entity2.width+entity2.height*entity2.height, .5)
+                m2 = math.pow(entity2.widthentity2.width+entity2.heightentity2.height, .5)
               end
               if math.dist(entity.x, entity.y, entity2.x, entity2.y)<m1+m2 then
                 entity2:collide(entity)
@@ -162,18 +220,19 @@ function init()
   addDrawFunction(
     function ()
       for pe, particuleEffect in pairs(particuleEffects) do
-        if math.abs(particuleEffect.x  + camera.x) <= .75*(width)/camera.scale
-        and math.abs(particuleEffect.y + camera.y) <= .75*(height)/camera.scale then
+        if math.abs(particuleEffect.x  - camera.x) <= .75*(width)/camera.scale
+        and math.abs(particuleEffect.y - camera.y) <= .75*(height)/camera.scale then
+          love.graphics.push()
           if particuleEffect.draw then
             particuleEffect:draw()
           else
-            drawParticuleEffect(particuleEffect)
+            drawParticuleEffect(entity)
           end
+          love.graphics.pop()
         end
       end
     end
   )
-
   addUpdateFunction(
     function (dt)
       for pe = #particuleEffects, 1, -1 do
@@ -274,17 +333,4 @@ function findIntersect(l1p1x,l1p1y, l1p2x,l1p2y, l2p1x,l2p1y, l2p2x,l2p2y, seg1,
 		end
 	end
 	return x,y
-end
-
-
-function love.wheelmoved(x, y)
-  if scaleByScrolling then
-    if camera.scale + camera.scale*0.1*y < 0.1 then
-      camera.scale = 0.1
-    elseif camera.scale + camera.scale*0.1*y > 10 then
-      camera.scale = 10
-    else
-      camera.scale = camera.scale + camera.scale*0.1*y
-    end
-  end
 end

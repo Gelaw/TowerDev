@@ -15,7 +15,7 @@ require "base"
 function test()
   spawn =  {
     x = -500, y = -500, width = 10, height = 10,
-    destination = {x = 700, y = 300}, spawnCD = 5, spawnTimer = 0,
+    destination = {x = 700, y = 300}, spawnCD = 2, spawnTimer = 0,
     --draw
     shape = "rectangle",color = {1, 0, 0, 1},
     --update
@@ -38,7 +38,7 @@ function test()
 
   gun = {
     width = 100, height = 10, angle = math.pi,
-    cooldown = 2, cooldownTimer = 0,
+    cooldown = 0.1, cooldownTimer = 0,
     --draw
     color = {0, 0, 0}, offset={x=40, y=0},
     draw = function (self, x, y)
@@ -72,7 +72,7 @@ function test()
         shotshell.y = y +  (self.width-self.offset.x)*math.sin(self.angle)
         shotshell.radius = 1
         shotshell.angle = self.angle
-        shotshell.speed = 3000
+        shotshell.speed = 200
         table.insert(entities, shotshell)
 
       end
@@ -133,7 +133,7 @@ function newEnnemy()
     --draw
     shape = "circle", color = {0, 0, 1},
     --update
-    speed = 200, destination = {x = 0, y = 0},
+    speed = 20, destination = {x = 0, y = 0},
     update = function (self, dt)
       --check if destination is set
       if self.destination == nil then return end
@@ -182,6 +182,7 @@ function newProjectile()
     draw = function (self)
       if self.trail and #self.trail > 4 then
         love.graphics.setColor(self.trailColor)
+        -- love.graphics.points(self.trail)
         love.graphics.line(self.trail)
       end
       love.graphics.setColor(self.color)
@@ -241,8 +242,8 @@ scaleByScrolling = true
 
 function love.mousemoved(x, y, dx, dy)
   if love.mouse.isDown(1) and clickTarget == nil then
-    camera.x = camera.x + dx/camera.scale
-    camera.y = camera.y + dy/camera.scale
+    camera.x = camera.x - dx/camera.scale
+    camera.y = camera.y - dy/camera.scale
   end
 end
 
