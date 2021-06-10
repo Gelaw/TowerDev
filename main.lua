@@ -38,7 +38,7 @@ function test()
 
   gun = {
     width = 100, height = 10, angle = math.pi,
-    cooldown = 0.1, cooldownTimer = 0,
+    cooldown = .5, cooldownTimer = 0,
     --draw
     color = {0, 0, 0}, offset={x=40, y=0},
     draw = function (self, x, y)
@@ -72,7 +72,7 @@ function test()
         shotshell.y = y +  (self.width-self.offset.x)*math.sin(self.angle)
         shotshell.radius = 1
         shotshell.angle = self.angle
-        shotshell.speed = 200
+        shotshell.speed = 2000
         table.insert(entities, shotshell)
 
       end
@@ -94,7 +94,7 @@ function test()
       if self.target then
         --Dont look at this, complicated stff for graphical enhancement
         love.graphics.setColor(1, 0, 0)
-        local o = 10
+        local o = 20
         love.graphics.line(self.target.x - o, self.target.y - o, self.target.x - o + o*.6, self.target.y - o)
         love.graphics.line(self.target.x - o, self.target.y - o, self.target.x - o , self.target.y - o + o*.6)
         love.graphics.line(self.target.x + o, self.target.y + o, self.target.x + o - o*.6, self.target.y + o)
@@ -129,7 +129,7 @@ end
 
 function newEnnemy()
   return {
-    x = 0, y = 0, radius = 3, tag = "ennemy",
+    x = 0, y = 0, radius = 15, tag = "ennemy",
     --draw
     shape = "circle", color = {0, 0, 1},
     --update
