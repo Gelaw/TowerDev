@@ -15,7 +15,7 @@ require "base"
 function test()
   spawn =  {
     x = -500, y = -500, width = 10, height = 10,
-    destination = {x = 700, y = 300}, spawnCD = 2, spawnTimer = 0,
+    destination = {x = 700, y = 300}, spawnCD = 5/60, spawnTimer = 0,
     --draw
     shape = "rectangle",color = {1, 0, 0, 1},
     --update
@@ -38,7 +38,7 @@ function test()
 
   gun = {
     width = 100, height = 10, angle = math.pi,
-    cooldown = .5, cooldownTimer = 0,
+    cooldown = .1, cooldownTimer = 0,
     --draw
     color = {0, 0, 0}, offset={x=40, y=0},
     draw = function (self, x, y)
